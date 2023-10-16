@@ -1,0 +1,246 @@
+<html>
+    <head>
+        <link rel="stylesheet" href='/static/style.css' />
+    </head>
+    <body>
+        <nav id="nav-bar" style="text-align:center" class="hue-bold">
+            <a href="./index.html">Home    </a>
+            <a href="./new.html">Newest Tokens    </a>
+            <a href="./all.html">All Tokens</a>
+            <a href="https://satoshichain.net">Satoshichain</a>
+          </nav>
+        <img id="logo_image" src="/static/logo.png">
+        <h1>Dex-Scan </h1>
+        <h4>Welcome to Dex-Scan. Dex pairing tracking and token information on Satoshichain.</h4>
+        
+        <h4>All SatoshiX pairings</h4>
+        <div id="pair-box">
+            <h4>{{token0_name}} ({{token0_ticker}})  /  {{token1_name}} ({{token1_ticker}})</h4>
+            <p>Total supply of {{token1_name}} = {{token1_supply}}</p>
+            <p>Current price = ${{price}} per {{token1_ticker}}</p>
+            <button id="button-5" onclick="window.location.href='{{web_link}}'">View on dex</button>
+            <p>Deployer wallet = {{deployer}}</p>
+        </div>
+    </body>
+</html>
+
+from flask import Flask, render_template
+import json
+from web3 import Web3
+import asyncio
+import os
+import sqlite3
+
+infura_url = 'https://rpc.satoshichain.io'
+web3 = Web3(Web3.HTTPProvider(infura_url))
+
+app = Flask(__name__)
+
+conn = sqlite3.connect('token_data.db')
+cursor = conn.cursor()
+cursor.execute('''SELECT * FROM tokens''')
+rows = cursor.fetchall()
+conn.close()
+token_data = []
+
+@app.route("/")
+
+def display():
+    conn = sqlite3.connect('token_data.db')
+    cursor = conn.cursor()
+
+    # Check if the 'tokens' table exists
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='tokens'")
+    table_exists = cursor.fetchone()
+
+    # If the table exists, fetch all rows from the 'tokens' table
+    token_data = []
+    if table_exists:
+        cursor.execute("SELECT * FROM tokens")
+        rows = cursor.fetchall()
+
+        # Extract the data from the rows
+        for row in rows:
+            token_entry = {
+                'token_name': row[1],
+                'token_symbol': row[2],
+                'token_decimals': row[3],
+                'token_supply': row[4],
+                'token_name1': row[5],
+                'token_symbol1': row[6],
+                'token_decimals1': row[7],
+                'token_supply1': row[8],
+                'link': row[9],
+                'deployer_address': row[10]
+            }
+
+            token_data.append(token_entry)
+
+    # Read the price from the separate txt file
+    with open('price.txt') as price_file:
+        price = price_file.read()
+
+    # Close the database connection
+    #conn.close()
+
+    return render_template('index.html', token_data=token_data, price=price)
+
+    #return user_data
+    #return render_template('index.html', token0_name=token0_name, token0_ticker=token0_ticker, token1_name=token1_name, token1_ticker=token1_ticker, web_link=web_link, token1_supply=token1_supply, price=price, deployer=deployer)
+
+@app.route("/new")
+def about():
+    with open("token_data.txt", 'r') as user_file:
+        user_data = user_file.read().split(',')
+        token0_name = user_data[0]
+        token0_ticker = user_data[1]
+        token0_decimals = user_data[2]
+        token0_supply = user_data[3]
+        token1_name = user_data[4]
+        token1_ticker = user_data[5]
+        token1_decimals = user_data[6]
+        token1_supply = user_data[7]
+        web_link = user_data[8] 
+        deployer = user_data[9]
+
+    with open('price.txt') as price_file:
+        price = price_file.read()
+
+    #return user_data
+    return render_template('new.html', user_data=user_data, token0_name=token0_name, token0_ticker=token0_ticker, token1_name=token1_name, token1_ticker=token1_ticker, web_link=web_link, token1_supply=token1_supply, price=price, deployer=deployer)
+
+if __name__ == "__main__":
+    app.run(host="127.0.0.1", port=8080, debug=True)
+
+
+    def handle_event(event):
+    #with open("user.txt", 'r') as user_file:
+     #   user_data = user_file.read()
+    print(event)
+    event = Web3.to_json(event)
+    token0 = event[21 : 63]
+    token1 = event[77 : 119]
+    pair = event[131 : 173]
+    tx_hash = event[267 : 333]
+
+    # Fetch the price data
+    price = fetch_price()
+    
+    if price is not None:
+        # Store the price data in the same database
+        conn = sqlite3.connect('token_data.db')
+        cursor = conn.cursor()
+
+        # ...
+
+        # Insert the price data into the table
+        cursor.execute("UPDATE tokens SET price = ? WHERE id = (SELECT max(id) FROM tokens)", (price,))
+        conn.commit()
+
+        # Close the database connection
+        conn.close()
+    else:
+        conn = sqlite3.connect('token_data.db')
+        cursor = conn.cursor()
+        cursor.execute("UPDATE tokens SET price = ? WHERE id = (SELECT max(id) FROM tokens)", (None,))
+        conn.commit()
+        print("Skipping storing price data due to an error.")
+
+    
+    
+
+    #abi = '[{"inputs":[],"name":"name","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"symbol","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"}]'
+    abi = '[{"inputs":[],"name":"name","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"symbol","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"decimals","outputs":[{"internalType":"uint8","name":"","type":"uint8"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"totalSupply","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"}]'
+
+    contract = web3.eth.contract(token0 , abi = abi)
+
+    token_name = contract.functions.name().call() 
+    token_symbol = contract.functions.symbol().call() 
+    token_decimals = contract.functions.decimals().call()
+    token_supply = contract.functions.totalSupply().call()
+
+    contract = web3.eth.contract(token1 , abi = abi)
+
+    token_name1 = contract.functions.name().call() 
+    token_symbol1 = contract.functions.symbol().call() 
+    token_decimals1 = contract.functions.decimals().call()
+    token_supply1 = contract.functions.totalSupply().call()
+
+    link = 'https://satoshix.io/swap?outputCurrency=' + token1
+
+    contract_creation_event = web3.eth.get_transaction_receipt(tx_hash)
+    deployer_address = contract_creation_event['from']
+
+    # Assuming the values are read from the CSV file
+    #token_supply = int(token_supply)
+    #token_supply1 = int(token_supply1)
+    #token_decimals = int(token_decimals)
+    #token_decimals1 = int(token_decimals1)
+
+   # Storing the values as strings in the database
+    cursor.execute('''INSERT INTO tokens (
+    token_name, token_symbol, token_decimals, token_supply,
+    token_name1, token_symbol1, token_decimals1, token_supply1,
+    link, deployer_address
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+    (token_name, token_symbol, token_decimals, str(token_supply),
+    token_name1, token_symbol1, token_decimals1, str(token_supply1),
+    link, deployer_address))
+
+    cursor.execute("PRAGMA table_info(tokens)")
+    columns = cursor.fetchall()
+    price_column_exists = any(column[1] == 'price' for column in columns)
+
+    if not price_column_exists:
+        cursor.execute("ALTER TABLE tokens ADD COLUMN price TEXT")
+
+    # Insert the price data into the table
+    cursor.execute("UPDATE tokens SET price = ? WHERE id = (SELECT max(id) FROM tokens)", (price,))
+    conn.commit()
+
+
+
+
+    #conn.commit()
+    #conn.close()
+
+    #response = requests.get('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd')
+    # Parse the response JSON
+    #data = response.json()
+    # Extract the BTC price
+    #btc_price = data['bitcoin']['usd']
+
+    #abi = '[{"inputs":[],"payable":false,"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"owner","type":"address"},{"indexed":true,"internalType":"address","name":"spender","type":"address"},{"indexed":false,"internalType":"uint256","name":"value","type":"uint256"}],"name":"Approval","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"sender","type":"address"},{"indexed":false,"internalType":"uint256","name":"amount0","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"amount1","type":"uint256"},{"indexed":true,"internalType":"address","name":"to","type":"address"}],"name":"Burn","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"sender","type":"address"},{"indexed":false,"internalType":"uint256","name":"amount0","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"amount1","type":"uint256"}],"name":"Mint","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"sender","type":"address"},{"indexed":false,"internalType":"uint256","name":"amount0In","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"amount1In","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"amount0Out","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"amount1Out","type":"uint256"},{"indexed":true,"internalType":"address","name":"to","type":"address"}],"name":"Swap","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint112","name":"reserve0","type":"uint112"},{"indexed":false,"internalType":"uint112","name":"reserve1","type":"uint112"}],"name":"Sync","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"from","type":"address"},{"indexed":true,"internalType":"address","name":"to","type":"address"},{"indexed":false,"internalType":"uint256","name":"value","type":"uint256"}],"name":"Transfer","type":"event"},{"constant":true,"inputs":[],"name":"DOMAIN_SEPARATOR","outputs":[{"internalType":"bytes32","name":"","type":"bytes32"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[],"name":"MINIMUM_LIQUIDITY","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[],"name":"PERMIT_TYPEHASH","outputs":[{"internalType":"bytes32","name":"","type":"bytes32"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[{"internalType":"address","name":"","type":"address"},{"internalType":"address","name":"","type":"address"}],"name":"allowance","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[{"internalType":"address","name":"spender","type":"address"},{"internalType":"uint256","name":"value","type":"uint256"}],"name":"approve","outputs":[{"internalType":"bool","name":"","type":"bool"}],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"balanceOf","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[{"internalType":"address","name":"to","type":"address"}],"name":"burn","outputs":[{"internalType":"uint256","name":"amount0","type":"uint256"},{"internalType":"uint256","name":"amount1","type":"uint256"}],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[],"name":"decimals","outputs":[{"internalType":"uint8","name":"","type":"uint8"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[],"name":"factory","outputs":[{"internalType":"address","name":"","type":"address"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[],"name":"getReserves","outputs":[{"internalType":"uint112","name":"_reserve0","type":"uint112"},{"internalType":"uint112","name":"_reserve1","type":"uint112"},{"internalType":"uint32","name":"_blockTimestampLast","type":"uint32"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[{"internalType":"address","name":"_token0","type":"address"},{"internalType":"address","name":"_token1","type":"address"}],"name":"initialize","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[],"name":"kLast","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[{"internalType":"address","name":"to","type":"address"}],"name":"mint","outputs":[{"internalType":"uint256","name":"liquidity","type":"uint256"}],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[],"name":"name","outputs":[{"internalType":"string","name":"","type":"string"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"nonces","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[{"internalType":"address","name":"owner","type":"address"},{"internalType":"address","name":"spender","type":"address"},{"internalType":"uint256","name":"value","type":"uint256"},{"internalType":"uint256","name":"deadline","type":"uint256"},{"internalType":"uint8","name":"v","type":"uint8"},{"internalType":"bytes32","name":"r","type":"bytes32"},{"internalType":"bytes32","name":"s","type":"bytes32"}],"name":"permit","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[],"name":"price0CumulativeLast","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[],"name":"price1CumulativeLast","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[{"internalType":"address","name":"to","type":"address"}],"name":"skim","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":false,"inputs":[{"internalType":"uint256","name":"amount0Out","type":"uint256"},{"internalType":"uint256","name":"amount1Out","type":"uint256"},{"internalType":"address","name":"to","type":"address"},{"internalType":"bytes","name":"data","type":"bytes"}],"name":"swap","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[],"name":"symbol","outputs":[{"internalType":"string","name":"","type":"string"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[],"name":"sync","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[],"name":"token0","outputs":[{"internalType":"address","name":"","type":"address"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[],"name":"token1","outputs":[{"internalType":"address","name":"","type":"address"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[],"name":"totalSupply","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"value","type":"uint256"}],"name":"transfer","outputs":[{"internalType":"bool","name":"","type":"bool"}],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":false,"inputs":[{"internalType":"address","name":"from","type":"address"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"value","type":"uint256"}],"name":"transferFrom","outputs":[{"internalType":"bool","name":"","type":"bool"}],"payable":false,"stateMutability":"nonpayable","type":"function"}]'
+
+    #lpcontract = web3.eth.contract(address=pair, abi=abi)
+    #balance = lpcontract.functions.getReserves().call()     # ##### token price ###
+     # ## assuming token1 is wrapped bnb ##    
+     # 
+    #if lpcontract.functions.token0().call() == '0x6CADaF9BBdEa5E1B5960679364501eE689fF3437':       swapTokenContract = True
+    #else:
+    #    swapTokenContract = False    
+    #if swapTokenContract == False:
+    #    TokenPrice =   ((balance[1]/18)/(balance[0]/18))*btc_price
+    #else:
+    #     TokenPrice = ((balance[0]/18)/(balance[1]/18))*btc_price  
+    #     return TokenPrice
+
+    if not os.path.exists("token_data1.txt"):
+        with open("token_data1.txt", "w") as default_file:
+            default_file.write(f'{token_name},')
+            default_file.write(f'{token_symbol},')
+            default_file.write(f'{token_decimals},')
+            default_file.write(f'{token_supply},')
+            default_file.write(f'{token_name1},')
+            default_file.write(f'{token_symbol1},')
+            default_file.write(f'{token_decimals1},')
+            default_file.write(f'{token_supply1},')
+            default_file.write(f'{link},')
+            default_file.write(f'{deployer_address},')
+            #default_file.write(f'{TokenPrice}')
+    #if not os.path.exists("user.txt"):
+     #   with open("user.txt", "w") as default_file:
+      #      default_file.write(Web3.to_json(event))
+    #extract(event)
+    # and whatever
+

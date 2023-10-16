@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Token Data</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+</head>
+<body>
+    <h1>Token Data</h1>
+
+    {% for row in data %}
+    <div id="pair-box">
+        <h4>{{ row[1] }} ({{ row[2] }}) / {{ row[5] }} ({{ row[6] }})</h4>
+        <p>Total supply of {{ row[5] }} = {{ row[4] }}</p>
+        <p>Current price = ${{ price }} per {{ row[6] }}</p>
+        <button id="button-5" onclick="window.location.href='{{ row[9] }}'">Buy on dex</button>
+        <p>Deployer wallet = {{ row[10] }}</p>
+        <div id="graph-{{ loop.index }}"></div>
+        
+        <script>
+            var timestamps = JSON.parse('{{ timestamps | tojson | safe }}');
+            var tokenPrices = JSON.parse('{{ tokenPrices | tojson | safe }}');
+
+            // Create a trace for the token price graph
+            var trace = {
+                x: timestamps,
+                y: tokenPrices,
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Token Price'
+            };
+
+            // Set the layout for the graph
+            var layout = {
+                title: 'Token Price Over Time',
+                xaxis: { title: 'Timestamp' },
+                yaxis: { title: 'Token Price' }
+            };
+
+            // Create the graph
+            Plotly.newPlot('graph-{{ loop.index }}', [trace], layout);
+        </script>
+    </div>
+    {% endfor %}
+</body>
+</html>
+
+
+

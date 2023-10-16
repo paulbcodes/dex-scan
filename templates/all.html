@@ -1,0 +1,34 @@
+<html>
+<head>
+    <link rel="stylesheet" href="/static/style.css" />
+    <meta http-equiv="refresh" content="30">
+    <title>Dex-Scan</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <meta name="description" content="Dex-Scan token tracking for dex listings on Satoshichain.">
+    <link rel="icon" type="image/png" href="/static/logo.png">
+</head>
+<body>
+    <nav id="nav-bar" style="text-align:center" class="hue-bold">
+        <a href="./">Home</a>
+        <a href="./new">Newest Pairss</a>
+        <a href="./all">All Pairs</a>
+        <a href="https://satoshichain.net">Satoshichain</a>
+    </nav>
+    <img id="logo_image" src="/static/logo.png">
+    <h1>Dex-Scan</h1>
+    <h4>Welcome to Dex-Scan. Dex pairing tracking and token information on Satoshichain.</h4>
+    
+    <h4>All SatoshiX pairings</h4>
+    
+    {% for row in data %}
+    <div id="pair-box">
+        <h4>{{ row[1] }} ({{ row[2] }}) / {{ row[5] }} ({{ row[6] }})</h4>
+        <p>Total supply of {{ row[5] }} = {{ row[8] }}</p>
+        <button id="button-5" onclick="window.location.href='{{ row[9] }}'">View on dex</button>
+        
+    </div>
+    {% endfor %}
+</body>
+</html>
